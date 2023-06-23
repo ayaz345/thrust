@@ -32,7 +32,7 @@ def Glob(pattern, directory,exclude='\B'):
 
 
 def generate_test_mk(mk_path, test_path, group, TEST_DIR):
-    print('Generating makefiles in "'+mk_path+'" for tests in "'+test_path+'"')
+    print(f'Generating makefiles in "{mk_path}" for tests in "{test_path}"')
     src_cu  = Glob("*.cu",  test_path, ".*testframework.cu$")
     src_cxx = Glob("*.cpp", test_path)
     src_cu.sort();
@@ -42,18 +42,17 @@ def generate_test_mk(mk_path, test_path, group, TEST_DIR):
     dependencies_all = []
     for s in src_all:
         fn = os.path.splitext(os.path.basename(s));
-        t = "thrust."+group+"."+fn[0]
+        t = f"thrust.{group}.{fn[0]}"
         e = fn[1]
         mkfile = test_template % {"TEST_SRC" : s,  "TEST_NAME" : t}
-        f = open(os.path.join(mk_path,t+".mk"), 'w')
-        f.write(mkfile)
-        f.close()
+        with open(os.path.join(mk_path, f"{t}.mk"), 'w') as f:
+            f.write(mkfile)
         tests_all.append(os.path.join(mk_path,t))
-        dependencies_all.append(t+": testframework")
+        dependencies_all.append(f"{t}: testframework")
     return [tests_all, dependencies_all]
 
 def generate_example_mk(mk_path, example_path, group, EXAMPLE_DIR):
-    print('Generating makefiles in "'+mk_path+'" for examples in "'+example_path+'"')
+    print(f'Generating makefiles in "{mk_path}" for examples in "{example_path}"')
     src_cu  = Glob("*.cu",  example_path)
     src_cxx = Glob("*.cpp", example_path)
     src_cu.sort();
@@ -62,12 +61,11 @@ def generate_example_mk(mk_path, example_path, group, EXAMPLE_DIR):
     examples_all = []
     for s in src_all:
         fn = os.path.splitext(os.path.basename(s));
-        t = "thrust."+group+"."+fn[0]
+        t = f"thrust.{group}.{fn[0]}"
         e = fn[1]
         mkfile = example_template % {"EXAMPLE_SRC" : s, "EXAMPLE_NAME" : t}
-        f = open(os.path.join(mk_path,t+".mk"), 'w')
-        f.write(mkfile)
-        f.close()
+        with open(os.path.join(mk_path, f"{t}.mk"), 'w') as f:
+            f.write(mkfile)
         examples_all.append(os.path.join(mk_path,t))
     return examples_all
 
@@ -84,9 +82,7 @@ def relpath(path, start):
     # Work out how much of the filepath is shared by start and path.
     i = len(posixpath.commonprefix([start_list, path_list]))
     rel_list = [posixpath.pardir] * (len(start_list)-i) + path_list[i:]
-    if not rel_list:
-        return posixpath.curdir
-    return posixpath.join(*rel_list)
+    return posixpath.curdir if not rel_list else posixpath.join(*rel_list)
 
 mk_path=sys.argv[1]
 REL_DIR="../../"
@@ -106,36 +102,21 @@ tests_cu,  dependencies_cu  = generate_test_mk(mk_path, "testing/cuda/", "test.c
 tests_all.extend(tests_cu)
 dependencies_all.extend(dependencies_cu)
 
-testing_mk  = ""
-
-for t in tests_all:
-    testing_mk += "PROJECTS += "+t+"\n"
-testing_mk += "PROJECTS += internal/build/testframework\n"
-
-
-f = open(os.path.join(mk_path,"testing.mk"),'w')
-f.write(testing_mk)
-f.close()
-
-dependencies_mk = ""
-for d in dependencies_all:
-    dependencies_mk += d + "\n"
-
-f = open(os.path.join(mk_path,"dependencies.mk"),'w')
-f.write(dependencies_mk)
-f.close()
-
-
-examples_mk = ""
+testing_mk = (
+    "".join(f"PROJECTS += {t}" + "\n" for t in tests_all)
+    + "PROJECTS += internal/build/testframework\n"
+)
+with open(os.path.join(mk_path,"testing.mk"),'w') as f:
+    f.write(testing_mk)
+dependencies_mk = "".join(d + "\n" for d in dependencies_all)
+with open(os.path.join(mk_path,"dependencies.mk"),'w') as f:
+    f.write(dependencies_mk)
 examples_all  = generate_example_mk(mk_path, "examples/", "example", REL_DIR)
 examples_cuda = generate_example_mk(mk_path, "examples/cuda/", "example.cuda", REL_DIR)
 examples_all.extend(examples_cuda)
-for e in examples_all:
-    examples_mk += "PROJECTS += "+e+"\n"
-
-f = open(os.path.join(mk_path,"examples.mk"),'w')
-f.write(examples_mk)
-f.close()
+examples_mk = "".join(f"PROJECTS += {e}" + "\n" for e in examples_all)
+with open(os.path.join(mk_path,"examples.mk"),'w') as f:
+    f.write(examples_mk)
 
 
 

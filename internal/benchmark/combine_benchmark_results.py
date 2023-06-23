@@ -93,8 +93,7 @@ def find_significant_digit(x):
   """Return the significant digit of the number x. The result is the number of
   digits after the decimal place to round to (negative numbers indicate rounding
   before the decimal place)."""
-  if x == 0: return 0
-  return -int(floor(log10(abs(x))))
+  return 0 if x == 0 else -int(floor(log10(abs(x))))
 
 def round_with_int_conversion(x, ndigits = None):
   """Rounds `x` to `ndigits` after the the decimal place. If `ndigits` is less
@@ -438,10 +437,9 @@ class io_manager(object):
         self.variable_names = reader.fieldnames
       else:
         # Make sure all inputs have the same schema.
-        assert self.variable_names == reader.fieldnames,                      \
-          "Input file (`" + input_file + "`) variable schema `"             + \
-          str(reader.fieldnames) + "` does not match the variable schema `" + \
-          str(self.variable_names) + "`."
+        assert (
+            self.variable_names == reader.fieldnames
+        ), f"Input file (`{input_file}`) variable schema `{str(reader.fieldnames)}` does not match the variable schema `{str(self.variable_names)}`."
 
       # Consume the next row, which should be the second line of the header.
       variable_units = reader.next()
@@ -453,19 +451,14 @@ class io_manager(object):
         self.variable_units = variable_units
       else:
         # Make sure all inputs have the same units schema.
-        assert self.variable_units == variable_units,                         \
-          "Input file (`" + input_file + "`) units schema `"                + \
-          str(variable_units) + "` does not match the units schema `"       + \
-          str(self.variable_units) + "`."
+        assert (
+            self.variable_units == variable_units
+        ), f"Input file (`{input_file}`) units schema `{str(variable_units)}` does not match the units schema `{str(self.variable_units)}`."
 
       self.readers.append(reader)
       self.input_files.append(input_file_object)
- 
-    if   output_file == "-": # Output to stdout.
-      self.output_file = stdout
-    else:                    # Output to user-specified file.
-      self.output_file = open(output_file, "w")
 
+    self.output_file = stdout if output_file == "-" else open(output_file, "w")
     self.writer = csv_dict_writer(
       self.output_file, fieldnames = self.variable_names
     )
@@ -566,9 +559,9 @@ class dependent_variable_parser(object):
 
     match = self.engine.match(s)
 
-    assert match is not None,                                          \
-      "Dependent variable (-d) `" +s+ "` is invalid, the format is " + \
-      "`AVG,STDEV,TRIALS`."
+    assert (
+        match is not None
+    ), f"Dependent variable (-d) `{s}` is invalid, the format is `AVG,STDEV,TRIALS`."
 
     return measured_variable(match.group(1), match.group(2), match.group(3))
 
@@ -603,9 +596,9 @@ class record_aggregator(object):
     self.dependent_variables = []
 
     if raw_dependent_variables is not None:
-      for variable in raw_dependent_variables:
-        self.dependent_variables.append(self.parse_dependent_variable(variable))
-
+      self.dependent_variables.extend(
+          self.parse_dependent_variable(variable)
+          for variable in raw_dependent_variables)
     self.dataset = {}
 
     self.in_order_dataset_keys = deque()
@@ -683,19 +676,15 @@ class record_aggregator(object):
 
       if type(sample_size) is list:
         # Sample size hasn't been combined yet.
-        assert len(quantities)    == len(uncertainties)                       \
-           and len(uncertainties) == len(sample_sizes),                       \
-          "Length of quantities list `(" + str(len(quantities)) + ")`, "    + \
-          "length of uncertainties list `(" + str(len(uncertainties))       + \
-          "),` and length of sample sizes list `(" + str(len(sample_sizes)) + \
-          ")` are not the same."
+        assert (
+            len(quantities) == len(uncertainties) == len(sample_sizes)
+        ), f"Length of quantities list `({len(quantities)})`, length of uncertainties list `({len(uncertainties)}),` and length of sample sizes list `({len(sample_sizes)})` are not the same."
       else:
         # Another dependent variable that uses our sample size has combined it
         # already.
-        assert len(quantities) == len(uncertainties),                         \
-          "Length of quantities list `(" + str(len(quantities)) + ")` and " + \
-          "length of uncertainties list `(" + str(len(uncertainties))       + \
-          ")` are not the same."
+        assert len(quantities) == len(
+            uncertainties
+        ), f"Length of quantities list `({len(quantities)})` and length of uncertainties list `({len(uncertainties)})` are not the same."
 
       # Convert the three separate `list`s into one list of `measured_value`s.
       measured_values = []
@@ -768,10 +757,9 @@ class record_aggregator(object):
       StopIteration  : If there is no more output.
       AssertionError : If class invariants were violated.
     """
-    assert len(self.dataset.keys()) == len(self.in_order_dataset_keys),      \
-      "Number of dataset keys (`" + str(len(self.dataset.keys()))          + \
-      "`) is not equal to the number of keys in the ordering list (`"      + \
-      str(len(self.in_order_dataset_keys)) + "`)."
+    assert len(self.dataset.keys()) == len(
+        self.in_order_dataset_keys
+    ), f"Number of dataset keys (`{len(self.dataset.keys())}`) is not equal to the number of keys in the ordering list (`{len(self.in_order_dataset_keys)}`)."
 
     if len(self.in_order_dataset_keys) == 0:
       raise StopIteration()

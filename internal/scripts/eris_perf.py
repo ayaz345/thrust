@@ -32,7 +32,7 @@ from argparse import ArgumentParser as argument_parser
 def printable_cmd(c):
   """Converts a `list` of `str`s representing a shell command to a printable 
   `str`."""
-  return " ".join(map(lambda e: '"' + str(e) + '"', c))
+  return " ".join(map(lambda e: f'"{str(e)}"', c))
 
 ###############################################################################
 

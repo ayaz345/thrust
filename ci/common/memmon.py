@@ -44,16 +44,14 @@ def signal_handler(sig, frame):
     # Sort by mem:
     sortentries = sorted(entries.items(), key=lambda x: x[1], reverse=True)
 
-    lf = open(args.log_file, "w")
+    with open(args.log_file, "w") as lf:
+        for com, mem in sortentries:
+            status = "PASS"
+            if mem >= args.fail_threshold:
+                status = "FAIL"
+            line = "%4s | %3.1f GiB | %s\n" % (status, mem, com)
+            lf.write(line)
 
-    for com, mem in sortentries:
-        status = "PASS"
-        if mem >= args.fail_threshold:
-            status = "FAIL"
-        line = "%4s | %3.1f GiB | %s\n" % (status, mem, com)
-        lf.write(line)
-
-    lf.close()
     sys.exit(0)
 
 
@@ -92,8 +90,7 @@ def parse_mem(mem_str):
 
 for line in proc.stdout:
     line = line.decode()
-    match = regex.match(line)
-    if match:
+    if match := regex.match(line):
         mem = parse_mem(match.group(1))
         if mem < args.log_threshold and mem < args.fail_threshold:
             continue

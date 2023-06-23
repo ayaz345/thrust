@@ -20,10 +20,8 @@ A "rule" is a begin tag, an end tag, and how to reformat the inner text
 def encase(pre, post, strip=False):
     """Return a function that prepends pre and postpends post"""
     def f(txt):
-        if strip:
-            return pre + txt.strip() + post
-        else:
-            return pre + txt + post
+        return pre + txt.strip() + post if strip else pre + txt + post
+
     return f
 
 def constant(text):
@@ -51,7 +49,7 @@ def sub(pat, repl, txt):
 
 def process_list(rules):
     def f(txt):
-        txt = '  *' + txt # was removed to match begin tag of list
+        txt = f'  *{txt}'
         res = '\\begin{itemize}\n'
         for ln in txt.split('\n'):
             # Convert "  *" to "\item "
@@ -59,6 +57,7 @@ def process_list(rules):
             res += apply_rules(ln, rules) + '\n'
         res += '\\end{itemize}\n'
         return res
+
     return f
 
 def process_link(rules):
@@ -69,9 +68,8 @@ def process_link(rules):
         if lnk[:7] == 'http://':
             desc = apply_rules(' '.join(lst[1:]), rules)
             return r'\href{' + lnk + r'}{' + desc + r'}'
-        if len(lst) > 1:
-            return r'\href{}{' + desc + r'}'
-        return r'\href{}{' + lnk + r'}'
+        return r'\href{}{' + desc + r'}' if len(lst) > 1 else r'\href{}{' + lnk + r'}'
+
     return f
 
 # Some rules can be used inside some other rules (backticks in section names)
@@ -160,9 +158,7 @@ def filter_sections(splitinput, removelst):
     """Take split input and remove sections in removelst"""
     res = []
     for sectname, sectcontents in splitinput:
-        if sectname in removelst:
-            pass
-        else:
+        if sectname not in removelst:
             res.extend(sectcontents)
     # convert to single string for output
     return '\n'.join(res)

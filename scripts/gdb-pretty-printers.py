@@ -43,30 +43,30 @@ class ThrustVectorPrinter(gdb.printing.PrettyPrinter):
             # At most 1 MB or size, at least 1
             self.buffer_size = min(size, max(1, 2 ** 20 // self.sizeof))
             self.buffer = gdb.parse_and_eval(
-                '(void*)malloc(%s)' % (self.buffer_size * self.sizeof))
+                f'(void*)malloc({self.buffer_size * self.sizeof})'
+            )
             self.buffer.fetch_lazy()
             self.buffer_count = self.buffer_size
             self.update_buffer()
 
         def update_buffer(self):
-            if self.buffer_count >= self.buffer_size:
-                self.buffer_item = gdb.parse_and_eval(
-                    hex(self.buffer)).cast(self.item.type)
-                self.buffer_count = 0
-                self.buffer_start = self.count
-                device_addr = hex(self.item.dereference().address)
-                buffer_addr = hex(self.buffer)
-                size = min(self.buffer_size, self.size -
-                           self.buffer_start) * self.sizeof
-                status = gdb.parse_and_eval(
-                    '(cudaError)cudaMemcpy(%s, %s, %d, cudaMemcpyDeviceToHost)' % (buffer_addr, device_addr, size))
-                if status != 0:
-                    raise gdb.MemoryError(
-                        'memcpy from device failed: %s' % status)
+            if self.buffer_count < self.buffer_size:
+                return
+            self.buffer_item = gdb.parse_and_eval(
+                hex(self.buffer)).cast(self.item.type)
+            self.buffer_count = 0
+            self.buffer_start = self.count
+            device_addr = hex(self.item.dereference().address)
+            buffer_addr = hex(self.buffer)
+            size = min(self.buffer_size, self.size -
+                       self.buffer_start) * self.sizeof
+            status = gdb.parse_and_eval(
+                '(cudaError)cudaMemcpy(%s, %s, %d, cudaMemcpyDeviceToHost)' % (buffer_addr, device_addr, size))
+            if status != 0:
+                raise gdb.MemoryError(f'memcpy from device failed: {status}')
 
         def __del__(self):
-            gdb.parse_and_eval('(void)free(%s)' %
-                               hex(self.buffer)).fetch_lazy()
+            gdb.parse_and_eval(f'(void)free({hex(self.buffer)})').fetch_lazy()
 
         def __iter__(self):
             return self
@@ -115,25 +115,25 @@ class ThrustReferencePrinter(gdb.printing.PrettyPrinter):
         self.pointer = val['ptr']['m_iterator']
         self.type = self.pointer.dereference().type
         sizeof = self.type.sizeof
-        self.buffer = gdb.parse_and_eval('(void*)malloc(%s)' % sizeof)
+        self.buffer = gdb.parse_and_eval(f'(void*)malloc({sizeof})')
         device_addr = hex(self.pointer)
         buffer_addr = hex(self.buffer)
         status = gdb.parse_and_eval('(cudaError)cudaMemcpy(%s, %s, %d, cudaMemcpyDeviceToHost)' % (
             buffer_addr, device_addr, sizeof))
         if status != 0:
-            raise gdb.MemoryError('memcpy from device failed: %s' % status)
+            raise gdb.MemoryError(f'memcpy from device failed: {status}')
         self.buffer_val = gdb.parse_and_eval(
             hex(self.buffer)).cast(self.pointer.type).dereference()
 
     def __del__(self):
-        gdb.parse_and_eval('(void)free(%s)' % hex(self.buffer)).fetch_lazy()
+        gdb.parse_and_eval(f'(void)free({hex(self.buffer)})').fetch_lazy()
 
     def children(self):
         return []
 
     def to_string(self):
         typename = str(self.val.type)
-        return ('(%s) @%s: %s' % (typename, self.pointer, self.buffer_val))
+        return f'({typename}) @{self.pointer}: {self.buffer_val}'
 
     def display_hint(self):
         return None

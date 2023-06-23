@@ -259,8 +259,7 @@ def find_significant_digit(x):
   """Return the significant digit of the number x. The result is the number of
   digits after the decimal place to round to (negative numbers indicate rounding
   before the decimal place)."""
-  if x == 0: return 0
-  return -int(floor(log10(abs(x))))
+  return 0 if x == 0 else -int(floor(log10(abs(x))))
 
 def round_with_int_conversion(x, ndigits = None):
   """Rounds `x` to `ndigits` after the the decimal place. If `ndigits` is less
@@ -692,11 +691,9 @@ class io_manager(object):
       strip_list(self.observed_reader.fieldnames)
 
     # Make sure all inputs have the same variables schema.
-    assert self.variable_names == self.observed_reader.fieldnames,             \
-      "Observed results input file (`" + observed_input_file + "`) "         + \
-      "variable schema `" + str(self.observed_reader.fieldnames) + "` does " + \
-      "not match the baseline results input file (`" + baseline_input_file   + \
-      "`) variable schema `" + str(self.variable_names) + "`."
+    assert (
+        self.variable_names == self.observed_reader.fieldnames
+    ), f"Observed results input file (`{observed_input_file}`) variable schema `{str(self.observed_reader.fieldnames)}` does not match the baseline results input file (`{baseline_input_file}`) variable schema `{self.variable_names}`."
 
     # Consume the next row, which should be the second line of the header.
     observed_variable_units = self.observed_reader.next()
@@ -705,17 +702,11 @@ class io_manager(object):
       strip_dict(observed_variable_units)
 
     # Make sure all inputs have the same units schema.
-    assert self.variable_units == observed_variable_units,                    \
-      "Observed results input file (`" + observed_input_file + "`) "        + \
-      "units schema `" + str(observed_variable_units) + "` does not "       + \
-      "match the baseline results input file (`" + baseline_input_file      + \
-      "`) units schema `" + str(self.variable_units) + "`."
+    assert (
+        self.variable_units == observed_variable_units
+    ), f"Observed results input file (`{observed_input_file}`) units schema `{str(observed_variable_units)}` does not match the baseline results input file (`{baseline_input_file}`) units schema `{str(self.variable_units)}`."
 
-    if   output_file == "-": # Output to stdout.
-      self.output_file = stdout
-    else:                    # Output to user-specified file.
-      self.output_file = open(output_file, "w")
-
+    self.output_file = stdout if output_file == "-" else open(output_file, "w")
     self.writer = csv_dict_writer(
       self.output_file, fieldnames = self.variable_names
     )
@@ -829,9 +820,9 @@ class dependent_variable_parser(object):
 
     match = self.engine.match(s)
 
-    assert match is not None,                                          \
-      "Dependent variable (-d) `" +s+ "` is invalid, the format is " + \
-      "`AVG,STDEV,TRIALS`."
+    assert (
+        match is not None
+    ), f"Dependent variable (-d) `{s}` is invalid, the format is `AVG,STDEV,TRIALS`."
 
     return measured_variable(match.group(1), match.group(2), match.group(3))
 
@@ -957,19 +948,15 @@ class record_aggregator(object):
 
       if type(sample_size) is list:
         # Sample size hasn't been combined yet.
-        assert len(quantities)    == len(uncertainties)                       \
-           and len(uncertainties) == len(sample_sizes),                       \
-          "Length of quantities list `(" + str(len(quantities)) + ")`, "    + \
-          "length of uncertainties list `(" + str(len(uncertainties))       + \
-          "),` and length of sample sizes list `(" + str(len(sample_sizes)) + \
-          ")` are not the same."
+        assert (
+            len(quantities) == len(uncertainties) == len(sample_sizes)
+        ), f"Length of quantities list `({len(quantities)})`, length of uncertainties list `({len(uncertainties)}),` and length of sample sizes list `({len(sample_sizes)})` are not the same."
       else:
         # Another dependent variable that uses our sample size has combined it
         # already.
-        assert len(quantities) == len(uncertainties),                         \
-          "Length of quantities list `(" + str(len(quantities)) + ")` and " + \
-          "length of uncertainties list `(" + str(len(uncertainties))       + \
-          ")` are not the same."
+        assert len(quantities) == len(
+            uncertainties
+        ), f"Length of quantities list `({len(quantities)})` and length of uncertainties list `({len(uncertainties)})` are not the same."
 
       # Convert the three separate `list`s into one list of `measured_value`s.
       measured_values = []
@@ -1042,10 +1029,9 @@ class record_aggregator(object):
       StopIteration  : If there is no more output.
       AssertionError : If class invariants were violated.
     """
-    assert len(self.dataset.keys()) == len(self.in_order_dataset_keys),      \
-      "Number of dataset keys (`" + str(len(self.dataset.keys()))          + \
-      "`) is not equal to the number of keys in the ordering list (`"      + \
-      str(len(self.in_order_dataset_keys)) + "`)."
+    assert len(self.dataset.keys()) == len(
+        self.in_order_dataset_keys
+    ), f"Number of dataset keys (`{len(self.dataset.keys())}`) is not equal to the number of keys in the ordering list (`{len(self.in_order_dataset_keys)}`)."
 
     if len(self.in_order_dataset_keys) == 0:
       raise StopIteration()
@@ -1075,9 +1061,7 @@ class record_aggregator(object):
 
     dependent_values = self.dataset[raw_distinguishing_values]
 
-    combined_dependent_values = self.combine_dependent_values(dependent_values)
-
-    return combined_dependent_values
+    return self.combine_dependent_values(dependent_values)
 
 ###############################################################################
 
@@ -1091,15 +1075,11 @@ if len(args.dependent_variables) == 0:
     "Thrust Average Throughput,Thrust Throughput Uncertainty,Thrust Trials"
   ]
 
-# Parse dependent variable options.
-dependent_variables = []
-
 parse_dependent_variable = dependent_variable_parser()
 
-#if args.dependent_variables is not None:
-for var in args.dependent_variables:
-  dependent_variables.append(parse_dependent_variable(var))
-
+dependent_variables = [
+    parse_dependent_variable(var) for var in args.dependent_variables
+]
 # Read input files and open the output file.
 with io_manager(args.baseline_input_file, 
                 args.observed_input_file,
@@ -1197,7 +1177,7 @@ with io_manager(args.baseline_input_file,
   # Add all baseline input data to the `record_aggregator`.
   for record in iom.baseline():
     baseline_ra.append(record)
-  
+
   for record in iom.observed():
     observed_ra.append(record)
 
@@ -1208,10 +1188,9 @@ with io_manager(args.baseline_input_file,
     try:
       baseline_dependent_values = baseline_ra[distinguishing_values]
     except KeyError: 
-      assert False,                                                           \
-        "Distinguishing value `"                                            + \
-        str(baseline_ra.key_from_dict(distinguishing_values))               + \
-        "` was not found in the baseline results."
+      assert (
+          False
+      ), f"Distinguishing value `{str(baseline_ra.key_from_dict(distinguishing_values))}` was not found in the baseline results."
 
     statistically_significant_change = False
 
